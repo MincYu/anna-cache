@@ -326,7 +326,7 @@ void run(KvsClientInterface *client, Address ip, unsigned thread_id) {
       }
 
       int key_size = key_to_update.size();
-      log->info("Receive {} keys update form KVS: {} ... {}", key_size, key_to_update.front(), key_to_update.end());
+      log->info("Receive {} keys update form KVS: {} ... {}", key_size, key_to_update.front(), key_to_update.back());
     }
 
     vector<KeyResponse> responses = client->receive_async();
