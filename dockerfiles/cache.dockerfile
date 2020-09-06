@@ -14,9 +14,6 @@
 
 FROM hydroproject/base:latest
 
-MAINTAINER Vikram Sreekanti <vsreekanti@gmail.com> version: 0.1
-
-ARG repo_org=hydro-project
 ARG source_branch=master
 ARG build_branch=docker-build
 
@@ -25,7 +22,7 @@ USER root
 # Check out to the appropriate branch on the appropriate fork of the repository
 # and build Anna.
 WORKDIR $HYDRO_HOME/anna-cache
-RUN git remote remove origin && git remote add origin https://github.com/$repo_org/anna-cache
+RUN git remote remove origin && git remote add origin https://github.com/MincYu/anna-cache
 RUN git fetch origin && git checkout -b $build_branch origin/$source_branch
 RUN bash scripts/build.sh -j4 -bRelease
 WORKDIR /

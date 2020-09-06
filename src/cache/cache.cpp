@@ -165,6 +165,11 @@ void run(KvsClientInterface *client, Address ip, unsigned thread_id) {
 
   std::list<Key> access_order;
   map<Key, std::list<Key>::iterator> iterator_cache;
+  
+  int get_cover_count;
+  int get_pending_count;
+  int put_count;
+  int drop_count;
 
   while (true) {
     kZmqUtil->poll(0, &pollitems);
@@ -201,9 +206,12 @@ void run(KvsClientInterface *client, Address ip, unsigned thread_id) {
         send_get_response(read_set, request.response_address(), key_type_map,
                           local_lww_cache, local_set_cache,
                           local_ordered_set_cache, pushers, log);
+        get_cover_count++;
+        
       } else {
         pending_request_read_set[request.response_address()] =
             PendingClientMetadata(read_set, to_retrieve);
+        get_pending_count++;
       }
     }
 
@@ -258,7 +266,10 @@ void run(KvsClientInterface *client, Address ip, unsigned thread_id) {
           string req_id =
               client->put_async(key, tuple.payload(), tuple.lattice_type());
           request_address_map[req_id] = request.response_address();
+          
+          put_count++;
         }
+
       }
     }
 
@@ -267,9 +278,12 @@ void run(KvsClientInterface *client, Address ip, unsigned thread_id) {
       string serialized = kZmqUtil->recv_string(&update_puller);
       KeyRequest updates;
       updates.ParseFromString(serialized);
+      
+      std::list<Key> key_to_update;
 
       for (const KeyTuple &tuple : updates.tuples()) {
         Key key = tuple.key();
+        key_to_update.push_back(key)
 
         // if we are no longer caching this key, then we simply ignore updates
         // for it because we received the update based on outdated information
@@ -310,6 +324,9 @@ void run(KvsClientInterface *client, Address ip, unsigned thread_id) {
                      local_lww_cache, local_set_cache, local_ordered_set_cache,
                      log);
       }
+
+      key_size = key_to_update.size();
+      log->info("Receive {} keys update form KVS: {} ... {}", key, key_to_update.front(), key_to_update.end());
     }
 
     vector<KeyResponse> responses = client->receive_async();
@@ -404,9 +421,14 @@ void run(KvsClientInterface *client, Address ip, unsigned thread_id) {
       Key key = get_user_metadata_key(ip, UserMetadataType::cache_ip);
       client->put_async(key, serialize(val), LatticeType::LWW);
       report_start = std::chrono::system_clock::now();
+
+      log->info("Runtime info. get_cover_count: {}, get_pending_count: {}, put_count: {}, drop_count: {}",
+        get_cover_count, get_pending_count, put_count, drop_count);
+
     }
 
     if (key_type_map.size() > 1000) {
+      drop_count++;
       // drop the 10 least recently accessed keys
       for (int i = 0; i < 10; i++) {
         Key key = access_order.back();

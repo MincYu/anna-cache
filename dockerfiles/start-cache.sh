@@ -30,7 +30,7 @@ if [[ -z "$REPO_BRANCH" ]]; then
   REPO_BRANCH="master"
 fi
 
-git remote add origin https://github.com/$REPO_ORG/anna-cache
+git remote add origin https://github.com/MincYu/anna-cache
 git fetch -p origin
 git checkout -b brnch origin/$REPO_BRANCH
 
