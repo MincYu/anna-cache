@@ -283,7 +283,7 @@ void run(KvsClientInterface *client, Address ip, unsigned thread_id) {
 
       for (const KeyTuple &tuple : updates.tuples()) {
         Key key = tuple.key();
-        key_to_update.push_back(key)
+        key_to_update.push_back(key);
 
         // if we are no longer caching this key, then we simply ignore updates
         // for it because we received the update based on outdated information
@@ -325,8 +325,8 @@ void run(KvsClientInterface *client, Address ip, unsigned thread_id) {
                      log);
       }
 
-      key_size = key_to_update.size();
-      log->info("Receive {} keys update form KVS: {} ... {}", key, key_to_update.front(), key_to_update.end());
+      int key_size = key_to_update.size();
+      log->info("Receive {} keys update form KVS: {} ... {}", key_size, key_to_update.front(), key_to_update.end());
     }
 
     vector<KeyResponse> responses = client->receive_async();
