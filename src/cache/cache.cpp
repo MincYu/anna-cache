@@ -403,7 +403,9 @@ void run(KvsClientInterface *client, Address ip, unsigned thread_id) {
             auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(
                         std::chrono::system_clock::now() - put_flight_start).count();
             
-            response.tuples(0).set_payload(duration);
+            KeyTuple *tp = &response.tuples(0);
+
+            tp->set_payload(std::to_string(duration));
             
             string resp_string;
             response.SerializeToString(&resp_string);
@@ -447,7 +449,7 @@ void run(KvsClientInterface *client, Address ip, unsigned thread_id) {
         log->info("Runtime info. get_cover_count: {}, get_pending_count: {}, put_count: {}, drop_count: {}",
           get_cover_count, get_pending_count, put_count, drop_count);
         
-        print_info_count = 0
+        print_info_count = 0;
       }
     }
 
