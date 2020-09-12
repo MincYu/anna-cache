@@ -172,12 +172,12 @@ void run(KvsClientInterface *client, Address ip, unsigned thread_id) {
   std::list<Key> access_order;
   map<Key, std::list<Key>::iterator> iterator_cache;
   
-  int get_cover_count;
-  int get_pending_count;
-  int put_count;
-  int drop_count;
+  int get_cover_count = 0;
+  int get_pending_count = 0;
+  int put_count = 0;
+  int drop_count = 0;
 
-  int print_info_count;
+  int print_info_count = 0;
 
   while (true) {
     kZmqUtil->poll(0, &pollitems);
@@ -229,6 +229,8 @@ void run(KvsClientInterface *client, Address ip, unsigned thread_id) {
 
     // handle a PUT request
     if (pollitems[1].revents & ZMQ_POLLIN) {
+      auto receive_put_req = std::chrono::system_clock::now();
+
       string serialized = kZmqUtil->recv_string(&put_puller);
       KeyRequest request;
       request.ParseFromString(serialized);
@@ -277,8 +279,14 @@ void run(KvsClientInterface *client, Address ip, unsigned thread_id) {
 
           string req_id =
               client->put_async(key, tuple.payload(), tuple.lattice_type());
-            
+
           auto put_flight_start = std::chrono::system_clock::now();
+
+          auto async_duration = std::chrono::duration_cast<std::chrono::milliseconds>(
+                    put_flight_start - receive_put_req).count();
+
+          log->info("Async Put req. key {}, process time {}", key, async_duration);
+      
           request_in_flight_map[req_id] = put_flight_start;
 
           request_address_map[req_id] = request.response_address();
@@ -427,7 +435,7 @@ void run(KvsClientInterface *client, Address ip, unsigned thread_id) {
             auto resp_duration = std::chrono::duration_cast<std::chrono::milliseconds>(
                         std::chrono::system_clock::now() - put_flight_start).count();
 
-            log->info("Put key {}, in flight time {}, response time {}", key, flight_duration, resp_duration);
+            log->info("Complete Put req. key {}, in flight time {}, response time {}", key, flight_duration, resp_duration);
 
           }
         }
