@@ -20,6 +20,8 @@ ZmqUtilInterface *kZmqUtil = &zmq_util;
 
 unsigned kCacheReportThreshold = 5;
 
+using TimePoint = std::chrono::time_point<std::chrono::system_clock>;
+
 struct PendingClientMetadata {
   PendingClientMetadata() = default;
   PendingClientMetadata(set<Key> read_set, set<Key> to_retrieve_set)
@@ -140,6 +142,8 @@ void run(KvsClientInterface *client, Address ip, unsigned thread_id) {
   // mapping from request id to respond address of PUT request
   map<string, Address> request_address_map;
 
+  map<string, TimePoint> request_in_flight_map;
+
   CacheThread ct = CacheThread(ip, thread_id);
 
   // TODO: can we find a way to make the thread classes uniform across
@@ -170,6 +174,8 @@ void run(KvsClientInterface *client, Address ip, unsigned thread_id) {
   int get_pending_count;
   int put_count;
   int drop_count;
+
+  int print_info_count;
 
   while (true) {
     kZmqUtil->poll(0, &pollitems);
@@ -265,6 +271,10 @@ void run(KvsClientInterface *client, Address ip, unsigned thread_id) {
 
           string req_id =
               client->put_async(key, tuple.payload(), tuple.lattice_type());
+            
+          auto put_flight_start = std::chrono::system_clock::now();
+          request_in_flight_map[req_id] = put_flight_start;
+
           request_address_map[req_id] = request.response_address();
           
           put_count++;
@@ -386,13 +396,23 @@ void run(KvsClientInterface *client, Address ip, unsigned thread_id) {
           // don't have one for updating our own cached key set
           if (request_address_map.find(response.response_id()) !=
               request_address_map.end()) {
+            
+            auto req_id = response.response_id();
+
+            auto put_flight_start = request_in_flight_map[req_id];
+            auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(
+                        std::chrono::system_clock::now() - put_flight_start).count();
+            
+            response.tuples(0).set_payload(duration);
+            
             string resp_string;
             response.SerializeToString(&resp_string);
 
             kZmqUtil->send_string(
                 resp_string,
-                &pushers[request_address_map[response.response_id()]]);
-            request_address_map.erase(response.response_id());
+                &pushers[request_address_map[req_id]]);
+            request_address_map.erase(req_id);
+            request_in_flight_map.erase(req_id);
           }
         }
       }
@@ -422,9 +442,13 @@ void run(KvsClientInterface *client, Address ip, unsigned thread_id) {
       client->put_async(key, serialize(val), LatticeType::LWW);
       report_start = std::chrono::system_clock::now();
 
-      log->info("Runtime info. get_cover_count: {}, get_pending_count: {}, put_count: {}, drop_count: {}",
-        get_cover_count, get_pending_count, put_count, drop_count);
-
+      print_info_count++;
+      if (print_info_count > 10) {
+        log->info("Runtime info. get_cover_count: {}, get_pending_count: {}, put_count: {}, drop_count: {}",
+          get_cover_count, get_pending_count, put_count, drop_count);
+        
+        print_info_count = 0
+      }
     }
 
     if (key_type_map.size() > 1000) {
