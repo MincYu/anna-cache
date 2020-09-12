@@ -415,16 +415,20 @@ void run(KvsClientInterface *client, Address ip, unsigned thread_id) {
             auto req_id = response.response_id();
 
             auto put_flight_start = request_in_flight_map[req_id];
-            auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(
+            auto flight_duration = std::chrono::duration_cast<std::chrono::milliseconds>(
                         std::chrono::system_clock::now() - put_flight_start).count();
-
-            log->info("Put key {}, in flight time {}", key, duration);  
 
             kZmqUtil->send_string(
                 resp_string,
                 &pushers[request_address_map[req_id]]);
             request_address_map.erase(req_id);
             request_in_flight_map.erase(req_id);
+
+            auto resp_duration = std::chrono::duration_cast<std::chrono::milliseconds>(
+                        std::chrono::system_clock::now() - put_flight_start).count();
+                        
+            log->info("Put key {}, in flight time {}, response time {}", key, duration, flight_duration, resp_duration);
+
           }
         }
       }
