@@ -267,7 +267,8 @@ void run(KvsClientInterface *client, Address ip, unsigned thread_id) {
           // first update key type map
           key_type_map[key] = tuple.lattice_type();
 
-          auto check_time = std::chrono::system_clock::now();
+          auto check_time = std::chrono::duration_cast<std::chrono::milliseconds>(
+                    std::chrono::system_clock::now() - receive_put_req).count();
 
           update_cache(key, tuple.lattice_type(), tuple.payload(),
                        local_lww_cache, local_set_cache,
@@ -280,8 +281,9 @@ void run(KvsClientInterface *client, Address ip, unsigned thread_id) {
           access_order.push_front(key);
           iterator_cache[key] = access_order.begin();
 
-          auto cache_update_time = std::chrono::system_clock::now();
-
+          auto cache_update_time = std::chrono::duration_cast<std::chrono::milliseconds>(
+                    std::chrono::system_clock::now() - receive_put_req).count();
+                    
           string req_id =
               client->put_async(key, tuple.payload(), tuple.lattice_type());
 
