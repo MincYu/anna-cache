@@ -426,8 +426,8 @@ void run(KvsClientInterface *client, Address ip, unsigned thread_id) {
 
             auto resp_duration = std::chrono::duration_cast<std::chrono::milliseconds>(
                         std::chrono::system_clock::now() - put_flight_start).count();
-                        
-            log->info("Put key {}, in flight time {}, response time {}", key, duration, flight_duration, resp_duration);
+
+            log->info("Put key {}, in flight time {}, response time {}", key, flight_duration, resp_duration);
 
           }
         }
