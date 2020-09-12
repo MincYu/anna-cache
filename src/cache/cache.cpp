@@ -139,6 +139,8 @@ void run(KvsClientInterface *client, Address ip, unsigned thread_id) {
 
   map<Key, LatticeType> key_type_map;
 
+  map<Key, TimePoint> key_in_flight_map;
+
   // mapping from request id to respond address of PUT request
   map<string, Address> request_address_map;
 
@@ -200,6 +202,10 @@ void run(KvsClientInterface *client, Address ip, unsigned thread_id) {
           to_retrieve.insert(key);
           key_requestor_map[key].insert(request.response_address());
           client->get_async(key);
+
+          auto get_flight_start = std::chrono::system_clock::now();
+          key_in_flight_map[key] = get_flight_start;
+
         } else {
           access_order.erase(iterator_cache[key]);
         }
@@ -389,6 +395,12 @@ void run(KvsClientInterface *client, Address ip, unsigned thread_id) {
               }
             }
 
+            auto get_flight_start = key_in_flight_map[key];
+            auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(
+                        std::chrono::system_clock::now() - get_flight_start).count();
+
+            log->info("Get remote key {}, in flight time {}", key, duration);  
+            key_in_flight_map.erase(key);
             key_requestor_map.erase(key);
           }
         } else {
@@ -397,18 +409,16 @@ void run(KvsClientInterface *client, Address ip, unsigned thread_id) {
           if (request_address_map.find(response.response_id()) !=
               request_address_map.end()) {
             
+            string resp_string;
+            response.SerializeToString(&resp_string);
+
             auto req_id = response.response_id();
 
             auto put_flight_start = request_in_flight_map[req_id];
             auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(
                         std::chrono::system_clock::now() - put_flight_start).count();
-            
-            KeyTuple *tp = &response.tuples(0);
 
-            tp->set_payload(std::to_string(duration));
-            
-            string resp_string;
-            response.SerializeToString(&resp_string);
+            log->info("Put key {}, in flight time {}", key, duration);  
 
             kZmqUtil->send_string(
                 resp_string,
