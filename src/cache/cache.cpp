@@ -283,7 +283,7 @@ void run(KvsClientInterface *client, Address ip, unsigned thread_id) {
 
           auto cache_update_time = std::chrono::duration_cast<std::chrono::milliseconds>(
                     std::chrono::system_clock::now() - receive_put_req).count();
-                    
+
           string req_id =
               client->put_async(key, tuple.payload(), tuple.lattice_type());
 
@@ -482,7 +482,7 @@ void run(KvsClientInterface *client, Address ip, unsigned thread_id) {
       }
     }
 
-    if (key_type_map.size() > 1000) {
+    if (key_type_map.size() > 1536) {
       drop_count++;
       // drop the 10 least recently accessed keys
       for (int i = 0; i < 10; i++) {
