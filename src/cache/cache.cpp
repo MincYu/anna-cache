@@ -286,7 +286,7 @@ void run(KvsClientInterface *client, Address ip, unsigned thread_id) {
 
           auto cache_update_time = std::chrono::duration_cast<std::chrono::milliseconds>(
                     std::chrono::system_clock::now() - receive_put_req).count();
-          if (remote_put_flag == 0){
+          if (remote_put_flag == 0 || key.length() > 16){ // metadata needs to be updated, which has large key_len
             string req_id = client->put_async(key, tuple.payload(), tuple.lattice_type());
 
             auto put_flight_start = std::chrono::system_clock::now();
