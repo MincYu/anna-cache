@@ -500,7 +500,7 @@ void run(KvsClientInterface *client, Address ip, unsigned thread_id) {
       }
     }
 
-    if (key_type_map.size() > 1920) {
+    if (key_type_map.size() > 10000) {
       drop_count++;
       // drop the 10 least recently accessed keys
       for (int i = 0; i < 10; i++) {
