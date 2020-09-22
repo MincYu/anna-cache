@@ -297,7 +297,23 @@ void run(KvsClientInterface *client, Address ip, unsigned thread_id) {
             request_address_map[req_id] = request.response_address();
           }
           else{
-            log->info("Local Put req. key {}, check time {}, update time {}", key, check_time, cache_update_time);
+            KeyResponse response;
+            response.set_type(RequestType::PUT);
+
+            KeyTuple *tp = response.add_tuples();
+            tp->set_key(key);
+            tp->set_lattice_type(key_type_map.at(key));
+
+            string resp_string;
+            response.SerializeToString(&resp_string);
+
+            kZmqUtil->send_string(
+                resp_string,
+                &pushers[request.response_address()]);
+            
+            auto return_duration = std::chrono::duration_cast<std::chrono::milliseconds>(
+                    std::chrono::system_clock::now() - receive_put_req).count();            
+            log->info("Local Put req. key {}, check time {}, update time {}, return time {}", key, check_time, cache_update_time, return_duration);
           }
 
           put_count++;
