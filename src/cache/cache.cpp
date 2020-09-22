@@ -179,6 +179,9 @@ void run(KvsClientInterface *client, Address ip, unsigned thread_id) {
 
   int print_info_count = 0;
 
+  string remote_put_env_var = std::getenv("REMOTE_PUT");
+  int remote_put_flag = std::stoi(remote_put_env_var);
+
   while (true) {
     kZmqUtil->poll(0, &pollitems);
 
@@ -283,21 +286,20 @@ void run(KvsClientInterface *client, Address ip, unsigned thread_id) {
 
           auto cache_update_time = std::chrono::duration_cast<std::chrono::milliseconds>(
                     std::chrono::system_clock::now() - receive_put_req).count();
+          if (remote_put_flag == 0){
+            string req_id = client->put_async(key, tuple.payload(), tuple.lattice_type());
 
-          string req_id =
-              client->put_async(key, tuple.payload(), tuple.lattice_type());
-
-          auto put_flight_start = std::chrono::system_clock::now();
-
-          auto async_duration = std::chrono::duration_cast<std::chrono::milliseconds>(
-                    put_flight_start - receive_put_req).count();
-
-          log->info("Async Put req. key {}, check time {}, update time {}, async time {}", key, check_time, cache_update_time, async_duration);
+            auto put_flight_start = std::chrono::system_clock::now();
+            auto async_duration = std::chrono::duration_cast<std::chrono::milliseconds>(put_flight_start - receive_put_req).count();
+            log->info("Remote Put req. key {}, check time {}, update time {}, async time {}", key, check_time, cache_update_time, async_duration);
       
-          request_in_flight_map[req_id] = put_flight_start;
+            request_in_flight_map[req_id] = put_flight_start;
+            request_address_map[req_id] = request.response_address();
+          }
+          else{
+            log->info("Local Put req. key {}, check time {}, update time {}", key, check_time, cache_update_time);
+          }
 
-          request_address_map[req_id] = request.response_address();
-          
           put_count++;
         }
 
